@@ -3,6 +3,8 @@ import UIKit
 class ViewController: UIViewController {
     
     private var isStarted: Bool = false
+    private var timer: Timer?
+    private var lightIndex: Int = 0
     
     private var buttonCenterYConstraint: NSLayoutConstraint!
     private var buttonBottomConstraint: NSLayoutConstraint!
@@ -10,13 +12,23 @@ class ViewController: UIViewController {
     private var buttonWidthConstraint: NSLayoutConstraint!
     
     private let lightSize: CGFloat = 100
-    private let containerPadding: CGFloat = 16
+    private let containerPadding: CGFloat = 24
     private let lightSpacing: CGFloat = 16
     private let innerPadding: CGFloat = 32
    
     private let redLight = UIView()
     private let yellowLight = UIView()
     private let greenLight = UIView()
+    
+    private let label: UILabel = {
+        let label = UILabel()
+        label.text = "Traffic Light"
+        label.textAlignment = .center
+        label.font = UIFont.systemFont(ofSize: 24, weight: .semibold)
+        label.textColor = .darkGray
+        label.alpha = 1
+        return label
+    }()
     
     private let button: UIButton = {
         let button = UIButton(type: .system)
@@ -54,8 +66,20 @@ class ViewController: UIViewController {
         self.view.backgroundColor = .white
         
         setupButton()
+        setupLabel()
         setupTrafficLight()
         setupLights()
+    }
+    
+    private func setupLabel() {
+        view.addSubview(label)
+        
+        label.translatesAutoresizingMaskIntoConstraints = false
+        
+        NSLayoutConstraint.activate([
+            label.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            label.bottomAnchor.constraint(equalTo: button.topAnchor, constant: -innerPadding)
+        ])
     }
     
     private func setupButton() {
@@ -115,7 +139,7 @@ class ViewController: UIViewController {
     }
     
     private func setupLight(_ light: UIView, color: UIColor) {
-        light.backgroundColor = color
+        light.backgroundColor = color.withAlphaComponent(0.25)
         light.layer.cornerRadius = lightSize / 2
         light.clipsToBounds = true
         light.translatesAutoresizingMaskIntoConstraints = false
@@ -128,6 +152,8 @@ class ViewController: UIViewController {
     
     @objc private func startButtonTapped() {
         isStarted.toggle()
+        isStarted ? startTrafficLightAnimation() : stopTrafficLightAnimation()
+        
         updateUI(animated: true)
     }
     
@@ -157,6 +183,7 @@ class ViewController: UIViewController {
     private func animateUIChangesIfNeeded(_ animated: Bool) {
         let animations = {
             self.updateTrafficLightVisibilityState()
+            self.label.alpha = self.isStarted ? 0 : 1
             self.view.layoutIfNeeded()
         }
         
@@ -176,6 +203,55 @@ class ViewController: UIViewController {
         trafficLightContainer.transform = isStarted
             ? .identity
             : CGAffineTransform(scaleX: 0.8, y: 0.8)
+    }
+    
+    private func startTrafficLightAnimation() {
+        timer?.invalidate()
+        lightIndex = 0
+        updateLightColor()
+        
+        timer = Timer.scheduledTimer(
+            timeInterval: 3,
+            target: self,
+            selector: #selector(trafficLightTick),
+            userInfo: nil,
+            repeats: true
+        )
+    }
+    
+    private func stopTrafficLightAnimation() {
+        timer?.invalidate()
+        timer = nil
+        
+        redLight.backgroundColor = .systemRed.withAlphaComponent(0.25)
+        yellowLight.backgroundColor = .systemYellow.withAlphaComponent(0.25)
+        greenLight.backgroundColor = .systemGreen.withAlphaComponent(0.25)
+        lightIndex = 0
+    }
+    
+    deinit {
+        timer?.invalidate()
+    }
+    
+    private func updateLightColor() {
+        UIView.animate(withDuration: 0.4) {
+            self.redLight.backgroundColor = self.lightIndex == 0
+                ? .systemRed
+                : .systemRed.withAlphaComponent(0.25)
+            
+            self.yellowLight.backgroundColor = self.lightIndex == 1
+                ? .systemYellow
+            : .systemYellow.withAlphaComponent(0.25)
+            
+            self.greenLight.backgroundColor = self.lightIndex == 2
+                ? .systemGreen
+                : .systemGreen.withAlphaComponent(0.25)
+        }
+    }
+    
+    @objc private func trafficLightTick() {
+        lightIndex = (lightIndex + 1) % 3
+        updateLightColor()
     }
     
 }
