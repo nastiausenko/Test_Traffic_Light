@@ -4,7 +4,7 @@ class ViewController: UIViewController {
     
     private var isStarted: Bool = false
     private var timer: Timer?
-    private var lightIndex: Int = 0
+    private var lightIndex: LightState = .red
     
     private var buttonCenterYConstraint: NSLayoutConstraint!
     private var buttonBottomConstraint: NSLayoutConstraint!
@@ -15,10 +15,24 @@ class ViewController: UIViewController {
     private let containerPadding: CGFloat = 24
     private let lightSpacing: CGFloat = 16
     private let innerPadding: CGFloat = 32
+    private let inactiveLightAlpha: CGFloat = 0.3
+    private let animationDuration: TimeInterval = 0.4
    
     private let redLight = UIView()
     private let yellowLight = UIView()
     private let greenLight = UIView()
+    
+    private enum LightState {
+        case red, yellow, green
+        
+        var next: LightState {
+            switch self {
+            case .red: return .yellow
+            case .yellow: return .green
+            case .green: return .red
+            }
+        }
+    }
     
     private let label: UILabel = {
         let label = UILabel()
@@ -139,7 +153,7 @@ class ViewController: UIViewController {
     }
     
     private func setupLight(_ light: UIView, color: UIColor) {
-        light.backgroundColor = color.withAlphaComponent(0.25)
+        light.backgroundColor = color.withAlphaComponent(inactiveLightAlpha)
         light.layer.cornerRadius = lightSize / 2
         light.clipsToBounds = true
         light.translatesAutoresizingMaskIntoConstraints = false
@@ -189,7 +203,7 @@ class ViewController: UIViewController {
         
         if animated {
             UIView.animate(
-                withDuration: 0.4,
+                withDuration: animationDuration,
                 delay: 0,
                 options: [.curveEaseInOut],
                 animations: animations)
@@ -207,7 +221,7 @@ class ViewController: UIViewController {
     
     private func startTrafficLightAnimation() {
         timer?.invalidate()
-        lightIndex = 0
+        lightIndex = .red
         updateLightColor()
         
         timer = Timer.scheduledTimer(
@@ -223,10 +237,10 @@ class ViewController: UIViewController {
         timer?.invalidate()
         timer = nil
         
-        redLight.backgroundColor = .systemRed.withAlphaComponent(0.25)
-        yellowLight.backgroundColor = .systemYellow.withAlphaComponent(0.25)
-        greenLight.backgroundColor = .systemGreen.withAlphaComponent(0.25)
-        lightIndex = 0
+        redLight.backgroundColor = .systemRed.withAlphaComponent(inactiveLightAlpha)
+        yellowLight.backgroundColor = .systemYellow.withAlphaComponent(inactiveLightAlpha)
+        greenLight.backgroundColor = .systemGreen.withAlphaComponent(inactiveLightAlpha)
+        lightIndex = .red
     }
     
     deinit {
@@ -234,23 +248,23 @@ class ViewController: UIViewController {
     }
     
     private func updateLightColor() {
-        UIView.animate(withDuration: 0.4) {
-            self.redLight.backgroundColor = self.lightIndex == 0
+        UIView.animate(withDuration: animationDuration) {
+            self.redLight.backgroundColor = self.lightIndex == .red
                 ? .systemRed
-                : .systemRed.withAlphaComponent(0.25)
+            : .systemRed.withAlphaComponent(self.inactiveLightAlpha)
             
-            self.yellowLight.backgroundColor = self.lightIndex == 1
+            self.yellowLight.backgroundColor = self.lightIndex == .yellow
                 ? .systemYellow
-            : .systemYellow.withAlphaComponent(0.25)
+            : .systemYellow.withAlphaComponent(self.inactiveLightAlpha)
             
-            self.greenLight.backgroundColor = self.lightIndex == 2
+            self.greenLight.backgroundColor = self.lightIndex == .green
                 ? .systemGreen
-                : .systemGreen.withAlphaComponent(0.25)
+            : .systemGreen.withAlphaComponent(self.inactiveLightAlpha)
         }
     }
     
     @objc private func trafficLightTick() {
-        lightIndex = (lightIndex + 1) % 3
+        lightIndex = lightIndex.next
         updateLightColor()
     }
     
