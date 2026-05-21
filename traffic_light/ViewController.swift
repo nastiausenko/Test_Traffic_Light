@@ -1,6 +1,11 @@
 import UIKit
 
 class ViewController: UIViewController {
+    
+    private var isStarted: Bool = false
+    private var buttonCenterYConstraint: NSLayoutConstraint!
+    private var buttonBottomConstraint: NSLayoutConstraint!
+    
 
     private let button: UIButton = {
         let button = UIButton()
@@ -19,17 +24,28 @@ class ViewController: UIViewController {
         
         self.view.addSubview(button)
         button.translatesAutoresizingMaskIntoConstraints = false
+        buttonCenterYConstraint = button.centerYAnchor.constraint(equalTo: view.centerYAnchor)
+        
+        buttonBottomConstraint = button.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -32)
         
         NSLayoutConstraint.activate([
             button.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            button.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            buttonCenterYConstraint,
             button.widthAnchor.constraint(equalToConstant: 100),
             button.heightAnchor.constraint(equalToConstant: 50)
         ])
     }
 
     @objc private func startButtonTapped() {
-        print("button tapped")
+        isStarted.toggle()
+        
+        button.setTitle(isStarted ? "Stop" : "Started", for: .normal)
+        buttonCenterYConstraint.isActive = isStarted ? false : true
+        buttonBottomConstraint.isActive = isStarted ? true : false
+       
+        UIView.animate(withDuration: 0.5) {
+            self.view.layoutIfNeeded()
+        }
     }
 }
 
