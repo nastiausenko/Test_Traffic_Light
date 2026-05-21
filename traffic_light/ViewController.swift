@@ -2,9 +2,26 @@ import UIKit
 
 class ViewController: UIViewController {
     
-    private var isStarted: Bool = false
+    private enum TrafficLightState {
+        case red
+        case yellow
+        case green
+        
+        var next: TrafficLightState {
+            switch self {
+            case .red:
+                return .yellow
+            case .yellow:
+                return .green
+            case .green:
+                return .red
+            }
+        }
+    }
+    
+    private var isStarted = false
     private var timer: Timer?
-    private var lightIndex: LightState = .red
+    private var currentLight: TrafficLightState = .red
     
     private var buttonCenterYConstraint: NSLayoutConstraint!
     private var buttonBottomConstraint: NSLayoutConstraint!
@@ -13,7 +30,7 @@ class ViewController: UIViewController {
     
     private let lightSize: CGFloat = 100
     private let containerPadding: CGFloat = 24
-    private let lightSpacing: CGFloat = 16
+    private let spacing: CGFloat = 16
     private let innerPadding: CGFloat = 32
     private let inactiveLightAlpha: CGFloat = 0.3
     private let animationDuration: TimeInterval = 0.4
@@ -22,25 +39,12 @@ class ViewController: UIViewController {
     private let yellowLight = UIView()
     private let greenLight = UIView()
     
-    private enum LightState {
-        case red, yellow, green
-        
-        var next: LightState {
-            switch self {
-            case .red: return .yellow
-            case .yellow: return .green
-            case .green: return .red
-            }
-        }
-    }
-    
     private let label: UILabel = {
         let label = UILabel()
         label.text = "Traffic Light"
         label.textAlignment = .center
-        label.font = UIFont.systemFont(ofSize: 24, weight: .semibold)
+        label.font = .systemFont(ofSize: 28, weight: .semibold)
         label.textColor = .darkGray
-        label.alpha = 1
         return label
     }()
     
@@ -50,6 +54,7 @@ class ViewController: UIViewController {
         button.setTitleColor(.white, for: .normal)
         button.backgroundColor = .systemBlue
         button.layer.cornerRadius = 10
+        button.clipsToBounds = true
         return button
     }()
     
@@ -69,7 +74,7 @@ class ViewController: UIViewController {
             greenLight
         ])
         stackView.axis = .vertical
-        stackView.spacing = lightSpacing
+        stackView.spacing = spacing
         stackView.alignment = .center
         stackView.distribution = .fill
         return stackView
@@ -77,23 +82,13 @@ class ViewController: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        self.view.backgroundColor = .white
+        view.backgroundColor = .white
         
         setupButton()
         setupLabel()
         setupTrafficLight()
         setupLights()
-    }
-    
-    private func setupLabel() {
-        view.addSubview(label)
-        
-        label.translatesAutoresizingMaskIntoConstraints = false
-        
-        NSLayoutConstraint.activate([
-            label.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            label.bottomAnchor.constraint(equalTo: button.topAnchor, constant: -innerPadding)
-        ])
+        resetTrafficLightColors()
     }
     
     private func setupButton() {
@@ -103,10 +98,16 @@ class ViewController: UIViewController {
         button.addTarget(
             self,
             action: #selector(startButtonTapped),
-            for: .touchUpInside)
+            for: .touchUpInside
+        )
         
-        buttonCenterYConstraint = button.centerYAnchor.constraint(equalTo: view.centerYAnchor)
-        buttonBottomConstraint = button.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -innerPadding)
+        buttonCenterYConstraint = button.centerYAnchor.constraint(
+            equalTo: view.centerYAnchor
+        )
+        buttonBottomConstraint = button.bottomAnchor.constraint(
+            equalTo: view.safeAreaLayoutGuide.bottomAnchor,
+            constant: -innerPadding
+        )
         buttonWidthConstraint = button.widthAnchor.constraint(equalToConstant: 100)
         buttonHeightConstraint = button.heightAnchor.constraint(equalToConstant: 50)
     
@@ -118,31 +119,43 @@ class ViewController: UIViewController {
         ])
     }
     
+    private func setupLabel() {
+        view.addSubview(label)
+        label.translatesAutoresizingMaskIntoConstraints = false
+        
+        NSLayoutConstraint.activate([
+            label.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            label.bottomAnchor.constraint(equalTo: button.topAnchor, constant: -spacing)
+        ])
+    }
+    
     private func setupTrafficLight() {
         view.addSubview(trafficLightContainer)
-        trafficLightContainer.addSubview(stackView)
-        
         trafficLightContainer.translatesAutoresizingMaskIntoConstraints = false
+        
+        trafficLightContainer.addSubview(stackView)
         stackView.translatesAutoresizingMaskIntoConstraints = false
         
         NSLayoutConstraint.activate([
-            trafficLightContainer.centerXAnchor.constraint(
-                equalTo: view.centerXAnchor),
-            trafficLightContainer.centerYAnchor.constraint(
-                equalTo: view.centerYAnchor),
-    
+            trafficLightContainer.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            trafficLightContainer.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            
             stackView.topAnchor.constraint(
                 equalTo: trafficLightContainer.topAnchor,
-                constant: containerPadding),
+                constant: containerPadding
+            ),
             stackView.leadingAnchor.constraint(
                 equalTo: trafficLightContainer.leadingAnchor,
-                constant: containerPadding),
+                constant: containerPadding
+            ),
             stackView.trailingAnchor.constraint(
                 equalTo: trafficLightContainer.trailingAnchor,
-                constant: -containerPadding),
+                constant: -containerPadding
+            ),
             stackView.bottomAnchor.constraint(
                 equalTo: trafficLightContainer.bottomAnchor,
-                constant: -containerPadding)
+                constant: -containerPadding
+            )
         ])
     }
     
@@ -153,7 +166,7 @@ class ViewController: UIViewController {
     }
     
     private func setupLight(_ light: UIView, color: UIColor) {
-        light.backgroundColor = color.withAlphaComponent(inactiveLightAlpha)
+        light.backgroundColor = inactiveColor(color)
         light.layer.cornerRadius = lightSize / 2
         light.clipsToBounds = true
         light.translatesAutoresizingMaskIntoConstraints = false
@@ -166,7 +179,7 @@ class ViewController: UIViewController {
     
     @objc private func startButtonTapped() {
         isStarted.toggle()
-        isStarted ? startTrafficLightAnimation() : stopTrafficLightAnimation()
+        isStarted ? startTrafficLight() : stopTrafficLight()
         
         updateUI(animated: true)
     }
@@ -206,7 +219,8 @@ class ViewController: UIViewController {
                 withDuration: animationDuration,
                 delay: 0,
                 options: [.curveEaseInOut],
-                animations: animations)
+                animations: animations
+            )
         } else {
             animations()
         }
@@ -219,9 +233,9 @@ class ViewController: UIViewController {
             : CGAffineTransform(scaleX: 0.8, y: 0.8)
     }
     
-    private func startTrafficLightAnimation() {
+    private func startTrafficLight() {
         timer?.invalidate()
-        lightIndex = .red
+        currentLight = .red
         updateLightColor()
         
         timer = Timer.scheduledTimer(
@@ -233,39 +247,50 @@ class ViewController: UIViewController {
         )
     }
     
-    private func stopTrafficLightAnimation() {
+    private func stopTrafficLight() {
         timer?.invalidate()
         timer = nil
+        resetTrafficLightColors()
+    }
+    
+    @objc private func trafficLightTick() {
+        currentLight = currentLight.next
+        updateLightColor()
+    }
+
+    private func updateLightColor() {
+        UIView.animate(withDuration: animationDuration) {
+            self.setActiveLight(self.currentLight)
+        }
+    }
+    
+    private func setActiveLight(_ activeLight: TrafficLightState) {
+        redLight.backgroundColor = activeLight == .red
+            ? .systemRed
+            : inactiveColor(.systemRed)
         
-        redLight.backgroundColor = .systemRed.withAlphaComponent(inactiveLightAlpha)
-        yellowLight.backgroundColor = .systemYellow.withAlphaComponent(inactiveLightAlpha)
-        greenLight.backgroundColor = .systemGreen.withAlphaComponent(inactiveLightAlpha)
-        lightIndex = .red
+        yellowLight.backgroundColor = activeLight == .yellow
+            ? .systemYellow
+            : inactiveColor(.systemYellow)
+        
+        greenLight.backgroundColor = activeLight == .green
+            ? .systemGreen
+            : inactiveColor(.systemGreen)
+    }
+    
+    private func resetTrafficLightColors() {
+        redLight.backgroundColor = inactiveColor(.systemRed)
+        yellowLight.backgroundColor = inactiveColor(.systemYellow)
+        greenLight.backgroundColor = inactiveColor(.systemGreen)
+        
+        currentLight = .red
+    }
+    
+    private func inactiveColor(_ color: UIColor) -> UIColor {
+        color.withAlphaComponent(inactiveLightAlpha)
     }
     
     deinit {
         timer?.invalidate()
     }
-    
-    private func updateLightColor() {
-        UIView.animate(withDuration: animationDuration) {
-            self.redLight.backgroundColor = self.lightIndex == .red
-                ? .systemRed
-            : .systemRed.withAlphaComponent(self.inactiveLightAlpha)
-            
-            self.yellowLight.backgroundColor = self.lightIndex == .yellow
-                ? .systemYellow
-            : .systemYellow.withAlphaComponent(self.inactiveLightAlpha)
-            
-            self.greenLight.backgroundColor = self.lightIndex == .green
-                ? .systemGreen
-            : .systemGreen.withAlphaComponent(self.inactiveLightAlpha)
-        }
-    }
-    
-    @objc private func trafficLightTick() {
-        lightIndex = lightIndex.next
-        updateLightColor()
-    }
-    
 }
