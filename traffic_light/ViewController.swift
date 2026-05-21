@@ -6,10 +6,13 @@ class ViewController: UIViewController {
     
     private var buttonCenterYConstraint: NSLayoutConstraint!
     private var buttonBottomConstraint: NSLayoutConstraint!
+    private var buttonHeightConstraint: NSLayoutConstraint!
+    private var buttonWidthConstraint: NSLayoutConstraint!
     
     private let lightSize: CGFloat = 100
     private let containerPadding: CGFloat = 16
     private let lightSpacing: CGFloat = 16
+    private let innerPadding: CGFloat = 32
    
     private let redLight = UIView()
     private let yellowLight = UIView()
@@ -50,53 +53,31 @@ class ViewController: UIViewController {
         super.viewDidLoad()
         self.view.backgroundColor = .white
         
-        self.button.addTarget(self, action: #selector(startButtonTapped), for: .touchUpInside)
-        
-        self.view.addSubview(button)
-        
-        button.translatesAutoresizingMaskIntoConstraints = false
-       
-        buttonCenterYConstraint = button.centerYAnchor.constraint(equalTo: view.centerYAnchor)
-        
-        buttonBottomConstraint = button.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -32)
-                
-        NSLayoutConstraint.activate([
-            button.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            buttonCenterYConstraint,
-            button.widthAnchor.constraint(equalToConstant: 100),
-            button.heightAnchor.constraint(equalToConstant: 50)
-        ])
-        
+        setupButton()
         setupTrafficLight()
         setupLights()
     }
-
-    @objc private func startButtonTapped() {
-        isStarted.toggle()
-        
-        isStarted ? showTrafficLight() : hideTrafficLight()
-        button.setTitle(isStarted ? "Stop" : "Start", for: .normal)
-        buttonCenterYConstraint.isActive = isStarted ? false : true
-        buttonBottomConstraint.isActive = isStarted ? true : false
-       
-        UIView.animate(withDuration: 0.5) {
-            self.view.layoutIfNeeded()
-
-        }
-    }
-  
-    private func showTrafficLight() {
-        UIView.animate(withDuration: 0.35) {
-            self.trafficLightContainer.alpha = 1
-            self.trafficLightContainer.transform = .identity
-        }
-    }
     
-    private func hideTrafficLight() {
-        UIView.animate(withDuration: 0.35) {
-            self.trafficLightContainer.alpha = 0
-            self.trafficLightContainer.transform = CGAffineTransform(scaleX: 0.8, y: 0.8)
-        }
+    private func setupButton() {
+        view.addSubview(button)
+        
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.addTarget(
+            self,
+            action: #selector(startButtonTapped),
+            for: .touchUpInside)
+        
+        buttonCenterYConstraint = button.centerYAnchor.constraint(equalTo: view.centerYAnchor)
+        buttonBottomConstraint = button.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -innerPadding)
+        buttonWidthConstraint = button.widthAnchor.constraint(equalToConstant: 100)
+        buttonHeightConstraint = button.heightAnchor.constraint(equalToConstant: 50)
+    
+        NSLayoutConstraint.activate([
+            button.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            buttonCenterYConstraint,
+            buttonWidthConstraint,
+            buttonHeightConstraint
+        ])
     }
     
     private func setupTrafficLight() {
@@ -128,12 +109,12 @@ class ViewController: UIViewController {
     }
     
     private func setupLights() {
-        setupLight(light: redLight, color: .systemRed)
-        setupLight(light: yellowLight, color: .systemYellow)
-        setupLight(light: greenLight, color: .systemGreen)
+        setupLight(redLight, color: .systemRed)
+        setupLight(yellowLight, color: .systemYellow)
+        setupLight(greenLight, color: .systemGreen)
     }
     
-    private func setupLight(light: UIView, color: UIColor) {
+    private func setupLight(_ light: UIView, color: UIColor) {
         light.backgroundColor = color
         light.layer.cornerRadius = lightSize / 2
         light.clipsToBounds = true
@@ -144,5 +125,57 @@ class ViewController: UIViewController {
             light.heightAnchor.constraint(equalToConstant: lightSize)
         ])
     }
-}
+    
+    @objc private func startButtonTapped() {
+        isStarted.toggle()
+        updateUI(animated: true)
+    }
+    
+    private func updateUI(animated: Bool) {
+        updateButton()
+        animateUIChangesIfNeeded(animated)
+    }
+    
+    private func updateButton() {
+        button.setTitle(isStarted ? "■" : "Start", for: .normal)
+        button.backgroundColor = isStarted ? .systemRed : .systemBlue
+        button.layer.cornerRadius = isStarted ? 25 : 10
+        
+        buttonWidthConstraint.constant = isStarted ? 50 : 100
+        buttonHeightConstraint.constant = 50
+        
+        NSLayoutConstraint.deactivate([
+            buttonCenterYConstraint,
+            buttonBottomConstraint
+        ])
+        
+        NSLayoutConstraint.activate([
+            isStarted ? buttonBottomConstraint : buttonCenterYConstraint
+        ])
+    }
+    
+    private func animateUIChangesIfNeeded(_ animated: Bool) {
+        let animations = {
+            self.updateTrafficLightVisibilityState()
+            self.view.layoutIfNeeded()
+        }
+        
+        if animated {
+            UIView.animate(
+                withDuration: 0.4,
+                delay: 0,
+                options: [.curveEaseInOut],
+                animations: animations)
+        } else {
+            animations()
+        }
+    }
 
+    private func updateTrafficLightVisibilityState() {
+        trafficLightContainer.alpha = isStarted ? 1 : 0
+        trafficLightContainer.transform = isStarted
+            ? .identity
+            : CGAffineTransform(scaleX: 0.8, y: 0.8)
+    }
+    
+}
